@@ -55,7 +55,6 @@ public partial class MainWindow : Window
         SearchBox.Text = string.Empty;
         _isUiReady = true;
         LoadSettings();
-        RefreshHealthOverview();
         Loaded += MainWindow_Loaded;
         Closed += (_, _) =>
         {
@@ -126,6 +125,7 @@ public partial class MainWindow : Window
         UpdateActiveProfileMarkers(_settings.SelectedProfileId);
         UpdateNodeStatusBar(selected);
         UpdateSidebarStatus();
+        UpdateTrafficStatsDisplay();
     }
 
     private bool FilterProfile(object item)
@@ -267,9 +267,6 @@ public partial class MainWindow : Window
         NodeAvailabilityTag.BorderBrush = (SolidColorBrush)new BrushConverter().ConvertFromString(tagBorder)!;
         NodeAvailabilityText.Foreground = (SolidColorBrush)new BrushConverter().ConvertFromString(tagForeground)!;
 
-        HealthNodeText.Text = NodeAvailabilityText.Text == "可用"
-            ? $"可用 · {profile.TcpLatencyMs} ms"
-            : NodeAvailabilityText.Text;
         SideNodeText.Text = $"节点：{profile.DisplayName} · {profile.ProtocolDisplay}";
     }
 
@@ -336,10 +333,7 @@ public partial class MainWindow : Window
         _lastTrafficSnapshot = null;
         _lastTrafficSampleAt = DateTime.Now;
         _lastTrafficPersistAt = DateTime.Now;
-        StatDownloadText.Text = "0 B/s";
-        StatUploadText.Text = "0 B/s";
-        StatMonthText.Text = FormatBytes(_settings.TotalDownlinkBytes + _settings.TotalUplinkBytes);
-        StatConnectionsText.Text = "统计中";
+        UpdateTrafficStatsDisplay(running: true);
         TrafficBadgeText.Text = "下行 0 B/s · 上传 0 B/s";
         _trafficTimer.Start();
         _ = RefreshTrafficAsync();
@@ -349,10 +343,7 @@ public partial class MainWindow : Window
     {
         _trafficTimer.Stop();
         _lastTrafficSnapshot = null;
-        StatDownloadText.Text = "—";
-        StatUploadText.Text = "—";
-        StatMonthText.Text = FormatBytes(_settings.TotalDownlinkBytes + _settings.TotalUplinkBytes);
-        StatConnectionsText.Text = "—";
+        UpdateTrafficStatsDisplay();
         TrafficBadgeText.Text = "下行 — · 上传 —";
     }
 
@@ -383,17 +374,17 @@ public partial class MainWindow : Window
                 var upDelta = Math.Max(0, snapshot.UplinkBytes - _lastTrafficSnapshot.UplinkBytes);
                 downSpeed = downDelta / seconds;
                 upSpeed = upDelta / seconds;
+                EnsureTodayTraffic();
                 _settings.TotalDownlinkBytes += downDelta;
                 _settings.TotalUplinkBytes += upDelta;
+                _settings.TodayDownlinkBytes += downDelta;
+                _settings.TodayUplinkBytes += upDelta;
             }
 
             _lastTrafficSnapshot = snapshot;
             _lastTrafficSampleAt = now;
 
-            StatDownloadText.Text = $"{FormatBytes(downSpeed)}/s";
-            StatUploadText.Text = $"{FormatBytes(upSpeed)}/s";
-            StatMonthText.Text = FormatBytes(_settings.TotalDownlinkBytes + _settings.TotalUplinkBytes);
-            StatConnectionsText.Text = _coreService.IsRunning ? "运行中" : "—";
+            UpdateTrafficStatsDisplay(downSpeed, upSpeed, running: true);
             TrafficBadgeText.Text = $"下行 {FormatBytes(downSpeed)}/s · 上传 {FormatBytes(upSpeed)}/s";
 
             if ((now - _lastTrafficPersistAt).TotalSeconds >= 5)
@@ -404,12 +395,59 @@ public partial class MainWindow : Window
         }
         catch
         {
-            StatConnectionsText.Text = "统计不可用";
+            UpdateTrafficStatsDisplay(running: _coreService.IsRunning);
         }
         finally
         {
             _isRefreshingTraffic = false;
         }
+    }
+
+    private void EnsureTodayTraffic()
+    {
+        var today = DateTime.Now.ToString("yyyy-MM-dd");
+        if (_settings.TodayTrafficDate == today)
+        {
+            return;
+        }
+
+        _settings.TodayTrafficDate = today;
+        _settings.TodayUplinkBytes = 0;
+        _settings.TodayDownlinkBytes = 0;
+    }
+
+    private void UpdateTrafficStatsDisplay(double downSpeed = 0, double upSpeed = 0, bool running = false)
+    {
+        EnsureTodayTraffic();
+        StatDownloadText.Text = running ? $"{FormatBytes(downSpeed)}/s" : "—";
+        StatUploadText.Text = running ? $"{FormatBytes(upSpeed)}/s" : "—";
+        StatTodayText.Text = FormatBytes(_settings.TodayUplinkBytes + _settings.TodayDownlinkBytes);
+        StatTotalText.Text = FormatBytes(_settings.TotalDownlinkBytes + _settings.TotalUplinkBytes);
+        StatRemainingText.Text = FormatSubscriptionRemaining();
+    }
+
+    private string FormatSubscriptionRemaining()
+    {
+        if (_settings.SubscriptionTotalBytes is not long total)
+        {
+            return "—";
+        }
+
+        var remaining = Math.Max(0, total - _settings.SubscriptionUploadBytes - _settings.SubscriptionDownloadBytes);
+        return FormatBytes(remaining);
+    }
+
+    private void ApplySubscriptionTrafficInfo(SubscriptionTrafficInfo? trafficInfo)
+    {
+        if (trafficInfo is null)
+        {
+            return;
+        }
+
+        _settings.SubscriptionUploadBytes = trafficInfo.UploadBytes;
+        _settings.SubscriptionDownloadBytes = trafficInfo.DownloadBytes;
+        _settings.SubscriptionTotalBytes = trafficInfo.TotalBytes;
+        UpdateTrafficStatsDisplay(running: _coreService.IsRunning);
     }
 
     private static string FormatBytes(double bytes)
@@ -489,7 +527,6 @@ public partial class MainWindow : Window
         }
 
         SyncTunToggleFromSettings();
-        RefreshHealthOverview();
     }
 
     private void RelaunchAsAdministrator()
@@ -529,7 +566,6 @@ public partial class MainWindow : Window
             StartTunIfEnabled();
             StartTrafficMonitor();
             UpdateSidebarStatus();
-            RefreshHealthOverview();
         }
         catch (Exception ex)
         {
@@ -553,7 +589,6 @@ public partial class MainWindow : Window
         }
 
         UpdateSidebarStatus();
-        RefreshHealthOverview();
     }
 
     private async Task RestartCoreAsync()
@@ -570,7 +605,6 @@ public partial class MainWindow : Window
         StartTunIfEnabled();
         StartTrafficMonitor();
         UpdateSidebarStatus();
-        RefreshHealthOverview();
     }
 
     private void SystemProxyCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -582,7 +616,6 @@ public partial class MainWindow : Window
 
         var mode = GetSystemProxyModeFromCombo();
         ApplySystemProxyMode(mode, save: true);
-        RefreshHealthOverview();
     }
 
     private async void RoutingCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -768,40 +801,7 @@ public partial class MainWindow : Window
         EditRoutingButton.Visibility = _settings.RoutingMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void RefreshHealthOverview()
-    {
-        var corePath = Path.Combine(AppContext.BaseDirectory, "cores", _settings.CoreExecutable);
-        HealthCoreText.Text = File.Exists(corePath) ? "正常" : "缺失";
-        HealthCoreText.Foreground = File.Exists(corePath) ? GreenBrush() : RedBrush();
-
-        var geoIp = Path.Combine(AppContext.BaseDirectory, "cores", "geoip.dat");
-        var geoSite = Path.Combine(AppContext.BaseDirectory, "cores", "geosite.dat");
-        var geoReady = File.Exists(geoIp) && File.Exists(geoSite);
-        HealthGeoText.Text = geoReady ? "已就绪" : "缺失";
-        HealthGeoText.Foreground = geoReady ? GreenBrush() : YellowBrush();
-
-        HealthPortText.Text = _coreService.IsRunning
-            ? $"{_settings.SocksPort}/{_settings.HttpPort} 正常"
-            : "Core 未运行";
-        HealthPortText.Foreground = _coreService.IsRunning ? GreenBrush() : YellowBrush();
-
-        HealthProxyText.Text = _settings.SystemProxyMode switch
-        {
-            "Auto" when _coreService.IsRunning => "一致",
-            "Pac" when _coreService.IsRunning => "PAC 已启用",
-            "Clear" => "已清除",
-            "Unchanged" => "未修改",
-            _ => "待确认"
-        };
-        HealthProxyText.Foreground = HealthProxyText.Text is "一致" or "PAC 已启用" ? GreenBrush() : YellowBrush();
-
-        HealthTunText.Text = TunService.IsRunning ? "运行中" : _settings.IsTunEnabled ? "待启动" : TunService.GetStatusText();
-        HealthTunText.Foreground = HealthTunText.Text is "运行中" or "可启用" ? GreenBrush() : YellowBrush();
-    }
-
     private static SolidColorBrush GreenBrush() => new(Color.FromRgb(0x16, 0xA3, 0x4A));
-    private static SolidColorBrush RedBrush() => new(Color.FromRgb(0xDC, 0x26, 0x26));
-    private static SolidColorBrush YellowBrush() => new(Color.FromRgb(0xCA, 0x8A, 0x04));
 
     private void ProfilesGrid_PreviewMouseRightButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -904,6 +904,8 @@ public partial class MainWindow : Window
         {
             _profiles.Add(profile);
         }
+
+        ApplySubscriptionTrafficInfo(dialog.ImportedTrafficInfo);
 
         var last = dialog.ImportedProfiles.LastOrDefault();
         SaveProfiles(last?.Id ?? _settings.SelectedProfileId);
@@ -1022,37 +1024,130 @@ public partial class MainWindow : Window
 
     private async void UpdatePageCheckButton_Click(object sender, RoutedEventArgs e)
     {
+        UpdatePageCheckButton.IsEnabled = false;
+        UpdateProgressPanel.Visibility = Visibility.Collapsed;
+        UpdateProgressBar.IsIndeterminate = false;
+        UpdateProgressBar.Value = 0;
         try
         {
             UpdateStatusText.Text = "正在检查更新...";
-            using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseApi);
-            request.Headers.UserAgent.ParseAdd("NaiwaProxy");
-            using var response = await UpdateHttpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            using var stream = await response.Content.ReadAsStreamAsync();
-            using var document = await JsonDocument.ParseAsync(stream);
-            var root = document.RootElement;
-            var latestTag = root.GetProperty("tag_name").GetString() ?? "";
-            var htmlUrl = root.GetProperty("html_url").GetString() ?? ProjectUrl;
+            var release = await GetLatestReleaseAsync();
             var currentVersion = GetCurrentVersion();
-            if (CompareVersionText(latestTag, currentVersion) <= 0)
+            if (CompareVersionText(release.TagName, currentVersion) <= 0)
             {
-                UpdateStatusText.Text = $"当前已是最新版本：{currentVersion}。GitHub 最新版本：{latestTag}";
+                UpdateStatusText.Text = $"当前已是最新版本：{currentVersion}。GitHub 最新版本：{release.TagName}";
                 return;
             }
 
-            UpdateStatusText.Text = $"发现新版本 {latestTag}。可点击“打开发布页”下载。";
-            _latestReleaseUrl = htmlUrl;
+            var installer = release.Assets
+                .FirstOrDefault(asset => asset.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                                         asset.Name.Contains("Setup", StringComparison.OrdinalIgnoreCase));
+            if (installer is null)
+            {
+                UpdateStatusText.Text = $"发现新版本 {release.TagName}，但 Release Assets 中没有找到安装包。请上传 NaiwaProxy-Setup-{release.TagName.TrimStart('v', 'V')}.exe。";
+                return;
+            }
+
+            UpdateStatusText.Text = $"发现新版本 {release.TagName}，正在下载 {installer.Name}。";
+            UpdateProgressPanel.Visibility = Visibility.Visible;
+            UpdateProgressText.Text = $"准备下载 {installer.Name}（{FormatBytes(installer.Size)}）";
+            var installerPath = await DownloadInstallerAsync(installer, new Progress<DownloadProgress>(UpdateDownloadProgress));
+            UpdateProgressText.Text = $"下载完成：{FormatBytes(installer.Size)}";
+            UpdateStatusText.Text = "下载完成，正在启动安装程序。";
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = installerPath,
+                UseShellExecute = true
+            });
+            Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
             UpdateStatusText.Text = $"检查更新失败：{ex.Message}";
         }
+        finally
+        {
+            UpdatePageCheckButton.IsEnabled = true;
+        }
     }
 
-    private string _latestReleaseUrl = ProjectUrl;
+    private static async Task<ReleaseInfo> GetLatestReleaseAsync()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseApi);
+        request.Headers.UserAgent.ParseAdd("NaiwaProxy");
+        using var response = await UpdateHttpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
 
-    private void UpdatePageReleaseButton_Click(object sender, RoutedEventArgs e) => OpenPath(_latestReleaseUrl);
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var document = await JsonDocument.ParseAsync(stream);
+        var root = document.RootElement;
+        var tagName = root.GetProperty("tag_name").GetString() ?? "";
+        var htmlUrl = root.GetProperty("html_url").GetString() ?? ProjectUrl;
+        var assets = new List<ReleaseAsset>();
+        if (root.TryGetProperty("assets", out var assetsElement))
+        {
+            foreach (var asset in assetsElement.EnumerateArray())
+            {
+                assets.Add(new ReleaseAsset(
+                    asset.GetProperty("name").GetString() ?? "",
+                    asset.GetProperty("browser_download_url").GetString() ?? "",
+                    asset.TryGetProperty("size", out var sizeElement) ? sizeElement.GetInt64() : 0));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(tagName))
+        {
+            throw new InvalidOperationException("Release 信息缺少版本号。");
+        }
+
+        return new ReleaseInfo(tagName, htmlUrl, assets);
+    }
+
+    private static async Task<string> DownloadInstallerAsync(ReleaseAsset asset, IProgress<DownloadProgress> progress)
+    {
+        if (string.IsNullOrWhiteSpace(asset.DownloadUrl))
+        {
+            throw new InvalidOperationException("安装包下载地址为空。");
+        }
+
+        var directory = Path.Combine(Path.GetTempPath(), "NaiwaProxy", "updates");
+        Directory.CreateDirectory(directory);
+        var targetPath = Path.Combine(directory, asset.Name);
+
+        using var response = await UpdateHttpClient.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        var totalBytes = response.Content.Headers.ContentLength ?? asset.Size;
+        progress.Report(new DownloadProgress(0, totalBytes));
+
+        await using var source = await response.Content.ReadAsStreamAsync();
+        await using var target = File.Create(targetPath);
+        var buffer = new byte[81920];
+        long downloadedBytes = 0;
+        int bytesRead;
+        while ((bytesRead = await source.ReadAsync(buffer)) > 0)
+        {
+            await target.WriteAsync(buffer.AsMemory(0, bytesRead));
+            downloadedBytes += bytesRead;
+            progress.Report(new DownloadProgress(downloadedBytes, totalBytes));
+        }
+
+        return targetPath;
+    }
+
+    private void UpdateDownloadProgress(DownloadProgress progress)
+    {
+        if (progress.TotalBytes > 0)
+        {
+            var percentage = Math.Clamp(progress.DownloadedBytes * 100d / progress.TotalBytes, 0, 100);
+            UpdateProgressBar.IsIndeterminate = false;
+            UpdateProgressBar.Value = percentage;
+            UpdateProgressText.Text = $"正在下载：{FormatBytes(progress.DownloadedBytes)} / {FormatBytes(progress.TotalBytes)}";
+            return;
+        }
+
+        UpdateProgressBar.IsIndeterminate = true;
+        UpdateProgressText.Text = $"正在下载：{FormatBytes(progress.DownloadedBytes)} / 未知大小";
+    }
 
     private void InlineClearNodeButton_Click(object sender, RoutedEventArgs e) => InlineClearNodeForm();
 
@@ -1143,13 +1238,14 @@ public partial class MainWindow : Window
     {
         try
         {
-            var imported = await SubscriptionImportService.ImportAsync(InlineImportBox.Text);
-            foreach (var profile in imported)
+            var result = await SubscriptionImportService.ImportAsync(InlineImportBox.Text);
+            foreach (var profile in result.Profiles)
             {
                 _profiles.Add(profile);
             }
 
-            var last = imported.LastOrDefault();
+            ApplySubscriptionTrafficInfo(result.TrafficInfo);
+            var last = result.Profiles.LastOrDefault();
             SaveProfiles(last?.Id ?? _settings.SelectedProfileId);
             RefreshNodePicker();
             ProfilesGrid.Items.Refresh();
@@ -1343,7 +1439,6 @@ public partial class MainWindow : Window
         finally
         {
             SetLatencyTestingEnabled(true);
-            RefreshHealthOverview();
         }
     }
 
@@ -1631,6 +1726,12 @@ public partial class MainWindow : Window
             MessageBox.Show(ex.Message, "NaiwaProxy", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    private sealed record ReleaseInfo(string TagName, string HtmlUrl, List<ReleaseAsset> Assets);
+
+    private sealed record ReleaseAsset(string Name, string DownloadUrl, long Size);
+
+    private sealed record DownloadProgress(long DownloadedBytes, long TotalBytes);
 
     private static void ShowError(Exception exception)
     {

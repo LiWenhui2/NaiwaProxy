@@ -14,6 +14,12 @@ public sealed class AppSettings
     public bool IsTunEnabled { get; set; }
     public long TotalUplinkBytes { get; set; }
     public long TotalDownlinkBytes { get; set; }
+    public string TodayTrafficDate { get; set; } = "";
+    public long TodayUplinkBytes { get; set; }
+    public long TodayDownlinkBytes { get; set; }
+    public long SubscriptionUploadBytes { get; set; }
+    public long SubscriptionDownloadBytes { get; set; }
+    public long? SubscriptionTotalBytes { get; set; }
 }
 
 public sealed class CustomRoutingSettings

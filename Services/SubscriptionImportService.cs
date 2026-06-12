@@ -12,7 +12,7 @@ public static class SubscriptionImportService
         Timeout = TimeSpan.FromSeconds(20)
     };
 
-    public static async Task<List<VmessProfile>> ImportAsync(string input, CancellationToken cancellationToken = default)
+    public static async Task<SubscriptionImportResult> ImportAsync(string input, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
@@ -27,20 +27,86 @@ public static class SubscriptionImportService
             return await ImportFromUrlAsync(uri, cancellationToken);
         }
 
-        return ParseProfiles(trimmed, "", null);
+        return new SubscriptionImportResult
+        {
+            Profiles = ParseProfiles(trimmed, "", null)
+        };
     }
 
-    private static async Task<List<VmessProfile>> ImportFromUrlAsync(Uri uri, CancellationToken cancellationToken)
+    private static async Task<SubscriptionImportResult> ImportFromUrlAsync(Uri uri, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd("NaiwaProxy/0.1");
+        request.Headers.UserAgent.ParseAdd("NaiwaProxy/1.0");
 
         using var response = await HttpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
         var sourceName = string.IsNullOrWhiteSpace(uri.Host) ? "订阅" : uri.Host;
-        return ParseProfiles(content, sourceName, DateTime.Now);
+        return new SubscriptionImportResult
+        {
+            Profiles = ParseProfiles(content, sourceName, DateTime.Now),
+            TrafficInfo = TryParseSubscriptionUserInfo(response)
+        };
+    }
+
+    internal static SubscriptionTrafficInfo? TryParseSubscriptionUserInfo(HttpResponseMessage response)
+    {
+        if (!response.Headers.TryGetValues("subscription-userinfo", out var values))
+        {
+            return null;
+        }
+
+        var raw = values.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        long upload = 0;
+        long download = 0;
+        long? total = null;
+
+        foreach (var part in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = part.IndexOf('=');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var key = part[..separator].Trim();
+            var value = part[(separator + 1)..].Trim();
+            if (!long.TryParse(value, out var number))
+            {
+                continue;
+            }
+
+            switch (key.ToLowerInvariant())
+            {
+                case "upload":
+                    upload = number;
+                    break;
+                case "download":
+                    download = number;
+                    break;
+                case "total":
+                    total = number;
+                    break;
+            }
+        }
+
+        if (total is null && upload == 0 && download == 0)
+        {
+            return null;
+        }
+
+        return new SubscriptionTrafficInfo
+        {
+            UploadBytes = upload,
+            DownloadBytes = download,
+            TotalBytes = total
+        };
     }
 
     private static List<VmessProfile> ParseProfiles(string content, string sourceName, DateTime? updatedAt)

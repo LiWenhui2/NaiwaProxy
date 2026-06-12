@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="NaiwaProxy" Height="800" Width="1460" MinHeight="740" MinWidth="1280"
+        Title="NaiwaProxy" Height="860" Width="1460" MinHeight="780" MinWidth="1280"
         Icon="/assets/app-icon.ico"
         Background="#F4F6FA"
         FontFamily="Segoe UI, Microsoft YaHei UI"
@@ -608,93 +608,38 @@
                     </Border>
 
                     <!-- Stats -->
-                    <UniformGrid Columns="4" Margin="0,0,0,16">
+                    <UniformGrid Columns="5" Margin="0,0,0,16">
                         <Border Style="{StaticResource StatCardStyle}" Margin="0,0,8,0">
                             <StackPanel>
                                 <TextBlock Text="当前下载" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
                                 <TextBlock x:Name="StatDownloadText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
-                                <TextBlock Text="今日 —" Foreground="{StaticResource MutedBrush}" FontSize="15" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource StatCardStyle}" Margin="0,0,8,0">
                             <StackPanel>
                                 <TextBlock Text="当前上传" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
                                 <TextBlock x:Name="StatUploadText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
-                                <TextBlock Text="今日 —" Foreground="{StaticResource MutedBrush}" FontSize="15" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource StatCardStyle}" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="今日累计" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
+                                <TextBlock x:Name="StatTodayText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource StatCardStyle}" Margin="0,0,8,0">
                             <StackPanel>
                                 <TextBlock Text="累计流量" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
-                                <TextBlock x:Name="StatMonthText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
-                                <TextBlock Text="重启后保留" Foreground="{StaticResource MutedBrush}" FontSize="15" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="StatTotalText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                         <Border Style="{StaticResource StatCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="连接 / 流量" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
-                                <TextBlock x:Name="StatConnectionsText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
-                                <TextBlock Text="订阅剩余 —" Foreground="{StaticResource MutedBrush}" FontSize="15" Margin="0,4,0,0"/>
+                                <TextBlock Text="剩余流量" Foreground="{StaticResource MutedBrush}" FontSize="15"/>
+                                <TextBlock x:Name="StatRemainingText" Text="—" FontSize="23" FontWeight="Bold" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
-
-                    <!-- Health -->
-                    <Border Style="{StaticResource CardBorderStyle}">
-                        <StackPanel>
-                            <TextBlock Text="健康概览" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
-                            <UniformGrid Columns="2">
-                                <Border Style="{StaticResource HealthItemStyle}">
-                                    <Grid>
-                                        <TextBlock Text="Core 文件" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthCoreText" Text="检测中" HorizontalAlignment="Right" Foreground="{StaticResource GreenBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}" Margin="0,0,0,8">
-                                    <Grid>
-                                        <TextBlock Text="geoip / geosite" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthGeoText" Text="检测中" HorizontalAlignment="Right" Foreground="{StaticResource GreenBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}">
-                                    <Grid>
-                                        <TextBlock Text="端口占用" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthPortText" Text="检测中" HorizontalAlignment="Right" Foreground="{StaticResource GreenBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}" Margin="0,0,0,8">
-                                    <Grid>
-                                        <TextBlock Text="系统代理一致" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthProxyText" Text="检测中" HorizontalAlignment="Right" Foreground="{StaticResource GreenBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}">
-                                    <Grid>
-                                        <TextBlock Text="当前节点连通" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthNodeText" Text="待测速" HorizontalAlignment="Right" Foreground="{StaticResource GreenBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}" Margin="0,0,0,8">
-                                    <Grid>
-                                        <TextBlock Text="订阅状态" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthSubText" Text="未配置" HorizontalAlignment="Right" Foreground="{StaticResource YellowBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}">
-                                    <Grid>
-                                        <TextBlock Text="TUN 驱动" HorizontalAlignment="Left"/>
-                                        <TextBlock x:Name="HealthTunText" Text="检测中" HorizontalAlignment="Right" Foreground="{StaticResource YellowBrush}"/>
-                                    </Grid>
-                                </Border>
-                                <Border Style="{StaticResource HealthItemStyle}" Margin="0,0,0,8">
-                                    <Grid>
-                                        <TextBlock Text="PAC 服务" HorizontalAlignment="Left"/>
-                                        <TextBlock Text="未启用" HorizontalAlignment="Right" Foreground="{StaticResource YellowBrush}"/>
-                                    </Grid>
-                                </Border>
-                            </UniformGrid>
-                        </StackPanel>
-                    </Border>
                 </StackPanel>
             </ScrollViewer>
 
@@ -702,7 +647,6 @@
                 <StackPanel Margin="24,22,24,28">
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="新建节点" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
                             <UniformGrid Columns="2" Margin="0,0,0,10">
                                 <StackPanel Margin="0,0,10,10">
                                     <TextBlock Text="协议" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
@@ -767,7 +711,6 @@
                 <StackPanel Margin="24,22,24,28">
                     <Border Style="{StaticResource CardBorderStyle}">
                         <StackPanel>
-                            <TextBlock Text="导入节点" FontSize="24" FontWeight="Bold" Margin="0,0,0,8"/>
                             <TextBlock Text="支持 vmess://、vless://、trojan://、ss://、socks://、http://，也支持订阅地址和多行批量导入。" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,14"/>
                             <TextBox x:Name="InlineImportBox" MinHeight="260" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16"/>
                             <WrapPanel>
@@ -789,7 +732,6 @@
                                 <ColumnDefinition Width="280"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="导出节点" FontSize="24" FontWeight="Bold" Margin="0,0,0,16"/>
                                 <TextBlock Text="选择节点" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
                                 <ComboBox x:Name="ExportProfileCombo" DisplayMemberPath="PickerDisplay" Height="42" Margin="0,0,0,14" SelectionChanged="ExportProfileCombo_SelectionChanged"/>
                                 <TextBlock Text="分享链接" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
@@ -818,9 +760,14 @@
                         <StackPanel>
                             <TextBlock Text="检查更新" FontSize="24" FontWeight="Bold" Margin="0,0,0,12"/>
                             <TextBlock x:Name="UpdateStatusText" Text="点击按钮检查 GitHub Release 中的最新版本。" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                            <Border x:Name="UpdateProgressPanel" Background="{StaticResource Panel2Brush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="14" Margin="0,0,0,16" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock x:Name="UpdateProgressText" Text="准备下载..." Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10"/>
+                                    <ProgressBar x:Name="UpdateProgressBar" Height="10" Minimum="0" Maximum="100" Value="0"/>
+                                </StackPanel>
+                            </Border>
                             <WrapPanel>
-                                <Button Content="检查更新" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,8" Click="UpdatePageCheckButton_Click"/>
-                                <Button Content="打开发布页" Style="{StaticResource DarkButtonStyle}" Margin="0,0,8,8" Click="UpdatePageReleaseButton_Click"/>
+                                <Button x:Name="UpdatePageCheckButton" Content="检查更新" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,8" Click="UpdatePageCheckButton_Click"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>

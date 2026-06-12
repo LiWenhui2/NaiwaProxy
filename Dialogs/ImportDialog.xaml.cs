@@ -10,6 +10,8 @@ public partial class ImportDialog : Window
 {
     public List<VmessProfile> ImportedProfiles { get; } = [];
 
+    public SubscriptionTrafficInfo? ImportedTrafficInfo { get; private set; }
+
     public ImportDialog()
     {
         InitializeComponent();
@@ -46,7 +48,9 @@ public partial class ImportDialog : Window
             ImportButton.IsEnabled = false;
             ImportButton.Content = "导入中…";
             ImportedProfiles.Clear();
-            ImportedProfiles.AddRange(await SubscriptionImportService.ImportAsync(ImportBox.Text));
+            var result = await SubscriptionImportService.ImportAsync(ImportBox.Text);
+            ImportedProfiles.AddRange(result.Profiles);
+            ImportedTrafficInfo = result.TrafficInfo;
 
             DialogResult = true;
             Close();
