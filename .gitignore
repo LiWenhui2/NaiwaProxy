@@ -7,3 +7,4 @@ dist/
 cores/*.dat
 cores/xray.exe
 Xray-windows-64/
+FEATURE_ROADMAP.md

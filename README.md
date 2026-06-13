@@ -342,8 +342,6 @@ Planned areas include:
 - Dark theme and localization.
 - Extended diagnostics and log viewer.
 
-See [`FEATURE_ROADMAP.md`](FEATURE_ROADMAP.md) for the broader planning document.
-
 ## License
 
 Project license information is not finalized in this repository yet.
